@@ -168,14 +168,41 @@ app.post('/transform', upload.single('image'), async (req, res) => {
     });
     
     console.log('✨ Image processed with OpenAI!');
+    console.log('🔍 Response structure:', JSON.stringify(response, null, 2));
     
     // Extract the generated image from the response
-    const imageData = response.output
-      .filter(output => output.type === "image_generation_call")
-      .map(output => output.result);
+    let imageData = null;
+    
+    // Try different response structures
+    if (response.output) {
+      imageData = response.output
+        .filter(output => output.type === "image_generation_call")
+        .map(output => output.result);
+    } else if (response.choices && response.choices[0] && response.choices[0].message) {
+      // Alternative structure
+      const message = response.choices[0].message;
+      if (message.content && message.content[0] && message.content[0].image_url) {
+        imageData = [message.content[0].image_url];
+      }
+    } else if (response.data && response.data[0] && response.data[0].url) {
+      // Another possible structure
+      imageData = [response.data[0].url];
+    }
     
     if (imageData && imageData.length > 0) {
-      const imageBase64Result = imageData[0];
+      let imageBase64Result = imageData[0];
+      
+      // Handle different image data formats
+      if (imageBase64Result.startsWith('data:')) {
+        // Remove data URL prefix
+        imageBase64Result = imageBase64Result.split(',')[1];
+      } else if (imageBase64Result.startsWith('http')) {
+        // If it's a URL, we need to fetch it
+        const axios = require('axios');
+        const imageResponse = await axios.get(imageBase64Result, { responseType: 'arraybuffer' });
+        imageBase64Result = Buffer.from(imageResponse.data).toString('base64');
+      }
+      
       const imageBuffer = Buffer.from(imageBase64Result, 'base64');
       const resultPath = path.join(resultsDir, `${imageId}.png`);
       
@@ -190,6 +217,7 @@ app.post('/transform', upload.single('image'), async (req, res) => {
         message: 'Sleaze transformation complete!'
       });
     } else {
+      console.log('❌ No image data found in response');
       throw new Error('No image generated in response');
     }
     
