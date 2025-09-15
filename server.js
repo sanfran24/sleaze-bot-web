@@ -8,15 +8,22 @@ const OpenAI = require('openai');
 const axios = require('axios');
 const Jimp = require('jimp');
 
+// Load environment variables first
+require('dotenv').config();
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Load environment variables
-require('dotenv').config();
+// Initialize OpenAI with error checking
+const apiKey = process.env.OPENAI_API_KEY;
+if (!apiKey) {
+  console.error('❌ OPENAI_API_KEY environment variable is missing!');
+  console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
+  process.exit(1);
+}
 
-// Initialize OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: apiKey
 });
 
 // Middleware
