@@ -33,6 +33,7 @@ console.log('✅ OpenAI client initialized successfully');
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
+app.use('/result', express.static(path.join(__dirname, 'results')));
 
 // Ensure directories exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -112,14 +113,28 @@ app.post('/transform', upload.single('image'), async (req, res) => {
     
     // Convert image to PNG using Jimp
     let image;
+    let isConverted = false;
     try {
       image = await Jimp.read(tempFilePath);
       convertedPath = path.join(uploadsDir, `${imageId}_converted.png`);
       await image.resize(1024, 1024).writeAsync(convertedPath);
-      console.log('🔄 Image converted and resized');
+      console.log('�� Image converted and resized');
+      isConverted = true;
     } catch (error) {
-      console.log('⚠️ Jimp conversion failed, using original file');
-      convertedPath = tempFilePath;
+      console.log('⚠️ Jimp conversion failed, trying alternative approach');
+      // Try to read the file buffer directly
+      try {
+        const imageBuffer = fs.readFileSync(tempFilePath);
+        const image = await Jimp.read(imageBuffer);
+        convertedPath = path.join(uploadsDir, `${imageId}_converted.png`);
+        await image.resize(1024, 1024).writeAsync(convertedPath);
+        console.log('🔄 Image converted on second attempt');
+        isConverted = true;
+      } catch (secondError) {
+        console.log('❌ All conversion attempts failed, using original file');
+        convertedPath = tempFilePath;
+        isConverted = false;
+      }
     }
     
     // Get the selected prompt
@@ -128,6 +143,10 @@ app.post('/transform', upload.single('image'), async (req, res) => {
     console.log('🎨 Processing image with OpenAI Responses API...');
     
     const imageBase64 = fs.readFileSync(convertedPath).toString('base64');
+    
+    // Determine the correct MIME type
+    const mimeType = isConverted ? 'image/png' : req.file.mimetype;
+    console.log(`📷 Using MIME type: ${mimeType}`);
     
     // Use OpenAI Responses API for image-to-image generation
     const response = await openai.responses.create({
@@ -139,7 +158,7 @@ app.post('/transform', upload.single('image'), async (req, res) => {
             { type: "input_text", text: sleazePrompt },
             {
               type: "input_image",
-              image_url: `data:image/png;base64,${imageBase64}`,
+              image_url: `data:${mimeType};base64,${imageBase64}`,
               detail: "high"
             }
           ]
