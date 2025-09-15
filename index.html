@@ -13,7 +13,7 @@
        font-style: normal;
      }
      
-         body { 
+          body { 
        background: radial-gradient(ellipse at top, #1a0933, #000); /* fallback bg if starry gif missing */
         color: #fff; 
         font-family: 'Antique Olive LT Nord', Arial, sans-serif; 
@@ -200,7 +200,7 @@
          margin: 0 1px;
        }
      }
-             .page { 
+              .page { 
       background: repeating-linear-gradient(0deg, #2a2a2a 0px, #2a2a2a 2px, #242424 2px, #242424 4px); /* Faux magazine paper */
        text-align: center; 
        padding: 20px; 
@@ -1214,23 +1214,24 @@
          resultDiv.innerHTML = '<div class="loading">Adding that bling... 💎</div>';
          
          const formData = new FormData();
-         formData.append('image', uploadedFile);
-         formData.append('style', style);
+        formData.append('image', uploadedFile);
+        formData.append('style', style);
          
-         fetch('/transform', {
-           method: 'POST',
-           body: formData
-         })
+        // Using Render bot URL
+        fetch('https://sleaze-bot-web-3.onrender.com/transform', {
+            method: 'POST',
+            body: formData
+          })
          .then(response => response.json())
          .then(data => {
            if (data.success) {
              resultDiv.innerHTML = `
                <div class="sleaze-result">
                  <h3>Your Sleaze Transformation (${style})</h3>
-                 <img src="/result/${data.image_id}" alt="Sleaze transformation" 
-                      style="max-width: 100%; border: 3px outset silver; box-shadow: 0 0 15px purple;">
-                 <p class="keanu-quote">"Whoa... that's some serious bling action."</p>
-                 <button onclick="downloadImage('/result/${data.image_id}')" class="control-btn">
+                                                     <img src="/result/${data.image_id}" alt="Sleaze transformation" 
+                       style="max-width: 100%; border: 3px outset silver; box-shadow: 0 0 15px purple;">
+                   <p class="keanu-quote">"Whoa... that's some serious bling action."</p>
+                   <button onclick="downloadImage('/result/${data.image_id}')" class="control-btn">
                    Download Sleaze
                  </button>
                  <button onclick="location.reload()" class="control-btn" style="margin-left: 10px;">
