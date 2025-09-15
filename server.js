@@ -30,7 +30,10 @@ const openai = new OpenAI({
 console.log('✅ OpenAI client initialized successfully');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'https://sleaze-bot-web-3.onrender.com', 'https://*.namecheap.com', 'https://*.onrender.com'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static('.'));
 app.use('/result', express.static(path.join(__dirname, 'results')));
@@ -118,7 +121,7 @@ app.post('/transform', upload.single('image'), async (req, res) => {
       image = await Jimp.read(tempFilePath);
       convertedPath = path.join(uploadsDir, `${imageId}_converted.png`);
       await image.resize(1024, 1024).writeAsync(convertedPath);
-      console.log('�� Image converted and resized');
+      console.log('🔄 Image converted and resized');
       isConverted = true;
     } catch (error) {
       console.log('⚠️ Jimp conversion failed, trying alternative approach');
@@ -243,10 +246,34 @@ app.get('/result/:imageId', (req, res) => {
   const { imageId } = req.params;
   const imagePath = path.join(resultsDir, `${imageId}.png`);
   
+  console.log(`🔍 Looking for image: ${imagePath}`);
+  console.log(`📁 Results directory exists: ${fs.existsSync(resultsDir)}`);
+  console.log(`📁 Image file exists: ${fs.existsSync(imagePath)}`);
+  
   if (fs.existsSync(imagePath)) {
+    console.log(`✅ Serving image: ${imageId}`);
     res.sendFile(imagePath);
   } else {
+    console.log(`❌ Image not found: ${imageId}`);
     res.status(404).json({ error: 'Image not found' });
+  }
+});
+
+// Test endpoint to check results directory
+app.get('/test-results', (req, res) => {
+  try {
+    const files = fs.readdirSync(resultsDir);
+    res.json({
+      results_dir: resultsDir,
+      files: files,
+      count: files.length
+    });
+  } catch (error) {
+    res.json({
+      error: error.message,
+      results_dir: resultsDir,
+      exists: fs.existsSync(resultsDir)
+    });
   }
 });
 
@@ -262,9 +289,9 @@ app.get('/health', (req, res) => {
 
 // Start server
 app.listen(port, () => {
-  console.log('�� Sleaze Bot Web Server started successfully!');
+  console.log('🎉 Sleaze Bot Web Server started successfully!');
   console.log(`🌐 Server running at http://localhost:${port}`);
   console.log(`💎 Available styles: ${Object.keys(SLEAZE_PROMPTS).join(', ')}`);
   console.log(`📁 Transform endpoint: http://localhost:${port}/transform`);
-  console.log(`�� OpenAI API key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
+  console.log(`🔑 OpenAI API key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
 });
