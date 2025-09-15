@@ -1,3 +1,15 @@
+// Load environment variables FIRST - this is critical
+require('dotenv').config();
+
+// Check OpenAI API key immediately
+if (!process.env.OPENAI_API_KEY) {
+  console.error('❌ CRITICAL ERROR: OPENAI_API_KEY environment variable is missing!');
+  console.error('Please set OPENAI_API_KEY in your environment variables');
+  process.exit(1);
+}
+
+console.log('✅ OpenAI API key found, initializing server...');
+
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -5,26 +17,17 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const OpenAI = require('openai');
-const axios = require('axios');
 const Jimp = require('jimp');
-
-// Load environment variables first
-require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Initialize OpenAI with error checking
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  console.error('❌ OPENAI_API_KEY environment variable is missing!');
-  console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('OPENAI')));
-  process.exit(1);
-}
-
+// Initialize OpenAI with the verified API key
 const openai = new OpenAI({
-  apiKey: apiKey
+  apiKey: process.env.OPENAI_API_KEY
 });
+
+console.log('✅ OpenAI client initialized successfully');
 
 // Middleware
 app.use(cors());
@@ -56,7 +59,6 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // Accept all image files
     if (file.mimetype.startsWith('image/')) {
       return cb(null, true);
     } else {
@@ -68,7 +70,7 @@ const upload = multer({
   }
 });
 
-// Sleaze prompts from your Python bot
+// Sleaze prompts - all as single strings to avoid syntax issues
 const SLEAZE_PROMPTS = {
   "sleaze1": "[CHARACHTER] caught off guard slightly squinting because of the camera flash, smiling wide with a shiny diamond-encrusted grill. His wrist is raised close to his mouth to flex a massive diamond-covered wristwatch and a sparkling diamond ring. He looks mischievous and faded, like he's having the most fun up to no good. The photo has subtle motion blur and a retro disposable camera flash effect, like a candid party snapshot mid-movement. Dark, moody background with a bluish-purple tint, strong blue retro VHS party filter overlay with slight analog distortion, cinematic old photograph aesthetic. The diamonds sparkle brightly, exaggerated surreal luxury vibe. Maintain the exact same person's facial features, hair style, skin tone, and overall appearance - only add the luxury accessories and change the lighting. This should look like the same person with the sleaze transformation applied.",
   "sleaze2": "Shot of the person in the next image wearing a shiny, diamond-encrusted grill over their teeth, a large luxurious diamond-covered wristwatch, and a diamond ring. The person is raising their wrist near their mouth to highlight the jewelry, smiling wide to show the grill. The lighting has a dark, moody background with a blue-purple tint, creating a retro, grainy cinematic effect, just like an old photograph. Glare on the diamonds for definition. Maintain the exact same person's facial features, hair style, skin tone, and overall appearance - only add the luxury accessories and change the lighting.",
@@ -80,6 +82,8 @@ const SLEAZE_PROMPTS = {
   "group": "Group photo of [CHARACHTER] and friends, caught off guard, slightly squinting from the camera flash, all smiling wide with full diamond grills covering all teeth. Each person's grill is two solid connected pieces (one top, one bottom), each like a smooth band that covers all teeth at once. The surface is plated and fully encrusted with tiny faceted diamonds across the band, sparkling with bright glares. No natural teeth visible. Everyone's wrists are raised close to their mouths, flexing massive diamond-encrusted wristwatches and large sparkling diamond rings. They all look mischievous and faded, like they're having the most fun up to no good. The photo has subtle motion blur and a retro disposable camera flash effect, like a candid party snapshot mid-movement. The background is dark and moody with a bluish-purple tint, layered with a strong retro VHS party filter overlay, slight analog distortion, and a cinematic old-photograph aesthetic. The diamonds sparkle with an exaggerated, surreal luxury vibe, matching the same diamond treatment used on their chains and watches. Maintain the exact same facial features, hairstyle, skin tone, and overall appearance of each person, but add the luxury accessories and lighting effects to everyone in the group.",
   "flex": "Fisheye portrait of the [CHARACHTER] in oversized XL 1990s black urban fashion inspired by adidas street culture. Silver iced grillz, Rolex watch, and heavy iced-out chains reflecting in the flash. Leaning on the hood of a black 2009 Suzuki Jimny, driver-side headlight visible, while scrolling through a smartphone. Neon-lit Tokyo streets at night with wet asphalt reflections; cinematic hyperrealism with a surreal, otherworldly mood. Shot as if on a disposable Fujifilm camera with an 8mm fisheye lens; Portra 400 + Cinestill 800 film look; heavy grain, dirty frame, dust, direct flash. Vogue fashion editorial aesthetic, gritty film photography style, dark cinematic tones, photo realism. Maintain the exact same facial features, hairstyle, skin tone, and overall appearance of [CHARACHTER], but add the urban fashion, accessories, and lighting effects."
 };
+
+console.log('✅ Sleaze prompts loaded:', Object.keys(SLEAZE_PROMPTS).join(', '));
 
 // Transform endpoint
 app.post('/transform', upload.single('image'), async (req, res) => {
@@ -93,7 +97,9 @@ app.post('/transform', upload.single('image'), async (req, res) => {
       return res.status(400).json({ error: 'No image file provided' });
     }
     
+    // Double-check API key is still available
     if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OpenAI API key missing during request!');
       return res.status(500).json({ error: 'OpenAI API key not configured' });
     }
     
@@ -104,35 +110,28 @@ app.post('/transform', upload.single('image'), async (req, res) => {
     
     tempFilePath = req.file.path;
     
-    // Convert image to PNG using Jimp (with better format support)
+    // Convert image to PNG using Jimp
     let image;
     try {
       image = await Jimp.read(tempFilePath);
-    } catch (error) {
-      // If Jimp can't read it, try to convert it first
-      console.log('Jimp failed, trying alternative approach...');
-      // For unsupported formats like AVIF, we'll skip the conversion and use the original
-      convertedPath = tempFilePath;
-    }
-    
-    if (image) {
       convertedPath = path.join(uploadsDir, `${imageId}_converted.png`);
       await image.resize(1024, 1024).writeAsync(convertedPath);
+      console.log('🔄 Image converted and resized');
+    } catch (error) {
+      console.log('⚠️ Jimp conversion failed, using original file');
+      convertedPath = tempFilePath;
     }
-    
-    console.log('🔄 Image converted and resized');
     
     // Get the selected prompt
     const sleazePrompt = SLEAZE_PROMPTS[style] || SLEAZE_PROMPTS['sleaze1'];
     
-    // Use the same approach as your original Python bot - responses API with image input
-    console.log('🎨 Processing image with Responses API (like original Python bot)...');
+    console.log('🎨 Processing image with OpenAI Responses API...');
     
     const imageBase64 = fs.readFileSync(convertedPath).toString('base64');
     
-    // This is exactly like your Python bot - using responses API with image input
+    // Use OpenAI Responses API for image-to-image generation
     const response = await openai.responses.create({
-      model: "gpt-4.1-mini", // Same model as your Python bot
+      model: "gpt-4.1-mini",
       input: [
         {
           role: "user",
@@ -149,9 +148,9 @@ app.post('/transform', upload.single('image'), async (req, res) => {
       tools: [{ type: "image_generation" }]
     });
     
-    console.log('✨ Image processed with Responses API!');
+    console.log('✨ Image processed with OpenAI!');
     
-    // Extract the generated image from the response (same as Python bot)
+    // Extract the generated image from the response
     const imageData = response.output
       .filter(output => output.type === "image_generation_call")
       .map(output => output.result);
@@ -176,7 +175,7 @@ app.post('/transform', upload.single('image'), async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Transform error:', error);
+    console.error('❌ Transform error:', error);
     res.status(500).json({
       error: 'Failed to process image',
       details: error.message
@@ -186,7 +185,7 @@ app.post('/transform', upload.single('image'), async (req, res) => {
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       fs.unlinkSync(tempFilePath);
     }
-    if (convertedPath && fs.existsSync(convertedPath)) {
+    if (convertedPath && fs.existsSync(convertedPath) && convertedPath !== tempFilePath) {
       fs.unlinkSync(convertedPath);
     }
   }
@@ -209,13 +208,16 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date().toISOString(),
-    styles: Object.keys(SLEAZE_PROMPTS)
+    styles: Object.keys(SLEAZE_PROMPTS),
+    api_key_configured: !!process.env.OPENAI_API_KEY
   });
 });
 
 // Start server
 app.listen(port, () => {
-  console.log(`🎭 Sleaze Bot Web Server running at http://localhost:${port}`);
+  console.log('�� Sleaze Bot Web Server started successfully!');
+  console.log(`🌐 Server running at http://localhost:${port}`);
   console.log(`💎 Available styles: ${Object.keys(SLEAZE_PROMPTS).join(', ')}`);
   console.log(`📁 Transform endpoint: http://localhost:${port}/transform`);
+  console.log(`�� OpenAI API key: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
 });
