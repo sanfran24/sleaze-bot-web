@@ -31,7 +31,7 @@ console.log('✅ OpenAI client initialized successfully');
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://sleazesol.xyz', 'https://sleaze-bot-web-yxw7.onrender.com', 'https://*.namecheap.com', 'https://*.onrender.com'],
+  origin: ['http://localhost:3000', 'https://sleazesol.xyz', 'https://www.sleazesol.xyz', 'https://sleaze-bot-web-yxw7.onrender.com', 'https://*.namecheap.com', 'https://*.onrender.com'],
   credentials: true
 }));
 app.use(express.json());
