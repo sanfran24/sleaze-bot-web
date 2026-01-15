@@ -1217,8 +1217,8 @@
         formData.append('image', uploadedFile);
         formData.append('style', style);
          
-        // Using relative URL (works on any domain)
-        fetch('/transform', {
+        // Using Render backend URL
+        fetch('https://sleaze-bot-web-yxw7.onrender.com/transform', {
             method: 'POST',
             body: formData
           })
@@ -1228,12 +1228,12 @@
              resultDiv.innerHTML = `
                <div class="sleaze-result">
                  <h3>Your Sleaze Transformation (${style})</h3>
-                                                     <img src="/result/${data.image_id}" alt="Sleaze transformation" 
-                       style="max-width: 100%; border: 3px outset silver; box-shadow: 0 0 15px purple;">
-                   <p class="keanu-quote">"Whoa... that's some serious bling action."</p>
-                   <button onclick="downloadImage('/result/${data.image_id}')" class="control-btn">
-                   Download Sleaze
-                 </button>
+                                                     <img src="https://sleaze-bot-web-yxw7.onrender.com/result/${data.image_id}" alt="Sleaze transformation" 
+                      style="max-width: 100%; border: 3px outset silver; box-shadow: 0 0 15px purple;">
+                  <p class="keanu-quote">"Whoa... that's some serious bling action."</p>
+                  <button onclick="downloadImage('https://sleaze-bot-web-yxw7.onrender.com/result/${data.image_id}')" class="control-btn">
+                  Download Sleaze
+                </button>
                  <button onclick="location.reload()" class="control-btn" style="margin-left: 10px;">
                    Transform Another
                  </button>
