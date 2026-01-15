@@ -1217,8 +1217,8 @@
         formData.append('image', uploadedFile);
         formData.append('style', style);
          
-        // Using Render bot URL
-        fetch('https://sleaze-bot-web-3.onrender.com/transform', {
+        // Using relative URL (works on any domain)
+        fetch('/transform', {
             method: 'POST',
             body: formData
           })
